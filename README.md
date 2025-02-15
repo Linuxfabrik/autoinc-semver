@@ -36,6 +36,10 @@ on:
     branches:
       - 'main'
 
+# modify the default permissions granted to the GITHUB_TOKEN
+permissions:
+  contents: 'read'
+
 jobs:
   versioning:
     uses: 'Linuxfabrik/autoinc-semver/.github/workflows/autoinc-semver.yml@main'
