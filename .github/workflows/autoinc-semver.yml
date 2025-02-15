@@ -3,6 +3,10 @@ name: 'Linuxfabrik: Auto-Increment Semantic Versioning Numbers'
 on:
   workflow_call:
 
+# modify the default permissions granted to the GITHUB_TOKEN
+permissions:
+  contents: 'read'
+
 jobs:
   versioning:
     runs-on: 'ubuntu-24.04'
