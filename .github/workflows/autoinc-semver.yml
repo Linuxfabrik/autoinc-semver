@@ -37,7 +37,7 @@ jobs:
               RESPONSE=$(curl --silent \
                 --header "Authorization: Bearer  ${{ secrets.GITHUB_TOKEN }}" \
                 --header "Accept: application/vnd.github.v3+json" \
-                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100&page=$PAGE")
+                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=10&page=$PAGE")
 
               # Check if there are any artifacts on this page.
               ARTIFACT_COUNT=$(echo "$RESPONSE" | jq ".artifacts | length")
