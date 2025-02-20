@@ -21,6 +21,9 @@ jobs:
 
       - name: 'Find and download latest version artifact using Bash'
         run: |
+          #!/usr/bin/env bash
+          set -x
+
           GITHUB_API_URL=https://api.github.com
           GITHUB_REPOSITORY=${{ github.repository_owner }}/${{ github.event.repository.name }}
 
@@ -39,9 +42,7 @@ jobs:
               # Check if there are any artifacts on this page.
               ARTIFACT_COUNT=$(echo "$RESPONSE" | jq ".artifacts | length")
               if [[ "$ARTIFACT_COUNT" -eq 0 ]]; then
-                  echo "No previous version artifact found. Defaulting to 1.0.0.0"
-                  echo "previous_version=1.0.0.0" >> $GITHUB_ENV
-                  exit 0
+                  break
               fi
               # Filter for artifacts with the name "version" and get the one with the latest created_at.
               ARTIFACT_INFO=$(echo "$RESPONSE" | jq --raw-output \
@@ -60,8 +61,8 @@ jobs:
           ARTIFACT_URL=$(echo "$ARTIFACT_INFO" | jq --raw-output ".archive_download_url // empty")
 
           if [[ -z "$ARTIFACT_URL" ]]; then
-              echo "❌ No previous version artifact found. Exiting..."
-              exit 1
+              echo "❌ No previous version artifact found. Defaulting to 1.0.0.0"
+              echo "previous_version=1.0.0.0" >> $GITHUB_ENV
           else
               echo "✅ Downloading artifact from: $ARTIFACT_URL"
               curl --silent \
