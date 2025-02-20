@@ -19,35 +19,63 @@ jobs:
         with:
           fetch-depth: 0  # Required for full commit history
 
-      - name: 'Find and download latest version artifact'
+      - name: 'Find and download latest version artifact using Bash'
         run: |
-          GH_API_URL="https://api.github.com/repos/${{ github.repository_owner }}/${{ github.event.repository.name }}/actions/artifacts"
+          GITHUB_API_URL=https://api.github.com
+          GITHUB_REPOSITORY=${{ github.repository_owner }}/${{ github.event.repository.name }}
+
+          echo "✅ Fetching all artifacts via REST and filtering by name to get the latest version"
           ARTIFACT_NAME="version"
+          PAGE=1
+          ARTIFACT_INFO="{}"
 
-          echo "Fetching latest artifact..."
+          while true; do
+              echo "✅ Fetching page $PAGE..."
+              RESPONSE=$(curl --silent \
+                --header "Authorization: Bearer $GITHUB_TOKEN" \
+                --header "Accept: application/vnd.github.v3+json" \
+                "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100&page=$PAGE")
 
-          # Fetch all artifacts and filter by name
-          ARTIFACT_INFO=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" "$GH_API_URL" | \
-            jq -r ".artifacts | map(select(.name == \"$ARTIFACT_NAME\")) | sort_by(.created_at) | last // {}")
+              # Check if there are any artifacts on this page.
+              ARTIFACT_COUNT=$(echo "$RESPONSE" | jq ".artifacts | length")
+              if [[ "$ARTIFACT_COUNT" -eq 0 ]]; then
+                  echo "No previous version artifact found. Defaulting to 1.0.0.0"
+                  echo "previous_version=1.0.0.0" >> $GITHUB_ENV
+                  exit 0
+              fi
+              # Filter for artifacts with the name "version" and get the one with the latest created_at.
+              ARTIFACT_INFO=$(echo "$RESPONSE" | jq --raw-output \
+                  ".artifacts | map(select(.name == \"$ARTIFACT_NAME\")) | sort_by(.created_at) | last // {}")
 
-          # Extract the download URL
-          ARTIFACT_URL=$(echo "$ARTIFACT_INFO" | jq -r ".archive_download_url // empty")
+              # If we found an artifact, break out of the loop.
+              if [[ "$ARTIFACT_INFO" != "{}" ]]; then
+                  echo "✅ Found $ARTIFACT_NAME artifact on page $PAGE."
+                  break
+              fi
+
+              PAGE=$((PAGE+1))
+          done
+
+          # Extract the download URL.
+          ARTIFACT_URL=$(echo "$ARTIFACT_INFO" | jq --raw-output ".archive_download_url // empty")
 
           if [[ -z "$ARTIFACT_URL" ]]; then
-            echo "No previous version artifact found. Defaulting to 1.0.0.0"
-            echo "previous_version=1.0.0.0" >> $GITHUB_ENV
+              echo "❌ No previous version artifact found. Exiting..."
+              exit 1
           else
-            echo "Downloading artifact from: $ARTIFACT_URL"
-            curl -L -o version.zip -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "$ARTIFACT_URL"
-            mkdir -p version_artifact
-            unzip -o version.zip -d version_artifact
-            PREVIOUS_VERSION=$(cat version_artifact/version.txt)
-            echo "Previous version found: $PREVIOUS_VERSION"
-            echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_ENV
+              echo "✅ Downloading artifact from: $ARTIFACT_URL"
+              curl --silent \
+                  --header "Authorization: Bearer $GITHUB_TOKEN" \
+                  --location \
+                  --output version.zip \
+                  "$ARTIFACT_URL"
+              unzip -o version.zip
+              PREVIOUS_VERSION=$(cat version.txt)
+              echo "Previous version found: $PREVIOUS_VERSION"
+              echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_ENV
           fi
 
-      - name: 'Create Version Bump Script'
+      - name: 'Create Version Bump Script (Python)'
         run: |
           cat > bump_version.py <<EOF
           import os
