@@ -119,9 +119,9 @@ jobs:
               if "BREAKING CHANGE" in msg or re.search(r"!:", msg):
                   bump_type = "major"
                   break
-              elif msg.startswith("feat:"):
+              elif msg.startswith("feat:") or msg.startswith("feat("):
                   bump_type = "minor"
-              elif msg.startswith("fix:") and bump_type != "minor":
+              elif (msg.startswith("fix:") or msg.startswith("fix(")) and bump_type != "minor":
                   bump_type = "patch"
 
           # Apply version bump
