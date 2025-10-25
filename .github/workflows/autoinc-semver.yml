@@ -154,7 +154,7 @@ jobs:
           echo "New version: $NEW_VERSION"
 
       - name: 'Upload New Version as Artifact'
-        uses: 'actions/upload-artifact@v4'
+        uses: 'actions/upload-artifact@v5'
         with:
           name: 'version'
           path: 'version.txt'
